@@ -18,13 +18,25 @@
             overflow-y: hidden; /* 전체 페이지 스크롤 비활성화 */
         }
 
+        /* 화면 전체에 비네팅 효과 추가 */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0) 50%, rgba(0,0,0,0.7) 100%);
+            pointer-events: none; /* 그라데이션이 다른 요소 클릭을 방해하지 않도록 설정 */
+            z-index: 199; /* GNB(200) 바로 아래에 위치하도록 z-index 조정 */
+        }
         /* --- GNB (Global Navigation Bar) --- */
         .gnb {
             position: fixed;
             left: 40px;
             top: 50%;
             transform: translateY(-50%);
-            z-index: 200; /* 다른 요소들 위에 표시 */
+            z-index: 202; /* 그라데이션(199)과 다른 모든 요소 위에 표시되도록 z-index 상향 조정 */
             opacity: 0; /* 초기에는 숨김 */
             transition: opacity 1s ease-in-out;
         }
@@ -488,29 +500,51 @@
                 scenes[currentSceneIndex].style.opacity = '1';
                 scenes[currentSceneIndex].style.pointerEvents = 'auto';
 
-                // --- 장면별 애니메이션 처리 ---
-                if (scenes[currentSceneIndex].id === 'final-scene') {
-                    const texts = scenes[currentSceneIndex].querySelectorAll('.final-text');
-                    const difficulties = scenes[currentSceneIndex].querySelectorAll('.difficulty-image');
-                    const difficultyContainer = scenes[currentSceneIndex].querySelector('.difficulty-container');
+                // --- 장면별 애니메이션 처리 확장 ---
+                const currentScene = scenes[currentSceneIndex];
+                const sceneId = currentScene.id;
 
-                    if (isGnbClick) {
-                        // GNB 클릭 시: 바로 난이도 정보 표시
-                        texts.forEach(el => el.classList.remove('is-visible')); // 텍스트는 숨김
+                // GNB 클릭 시 모든 요소를 바로 표시
+                if (isGnbClick) {
+                    currentScene.querySelectorAll('.reveal-on-scroll, .difficulty-image').forEach(el => el.classList.add('is-visible'));
+                    if (sceneId === 'final-scene') {
+                        currentScene.querySelector('.final-text-container').style.display = 'none';
+                        currentScene.querySelector('.difficulty-container').style.opacity = '1';
+                    }
+                    isAnimating = false; // GNB 클릭 시 애니메이션 대기 시간 없음
+                    return;
+                }
+
+                // 휠 스크롤 시 순차 애니메이션 적용
+                if (sceneId === 'update-scene') {
+                    const character = currentScene.querySelector('.character-image');
+                    const contents = currentScene.querySelectorAll('.content-wrapper .reveal-on-scroll');
+                    character.classList.add('is-visible');
+                    setTimeout(() => {
+                        contents.forEach((el, index) => {
+                            setTimeout(() => el.classList.add('is-visible'), index * 300);
+                        });
+                    }, 800);
+                } else if (sceneId === 'lore-scene') {
+                    const texts = currentScene.querySelectorAll('.lore-container .reveal-on-scroll');
+                    const character = currentScene.querySelector('.character-image-right');
+                    texts.forEach((el, index) => {
+                        setTimeout(() => el.classList.add('is-visible'), index * 1000);
+                    });
+                    setTimeout(() => character.classList.add('is-visible'), texts.length * 1000);
+                } else if (sceneId === 'final-scene') {
+                    const textContainer = currentScene.querySelector('.final-text-container');
+                    const difficultyContainer = currentScene.querySelector('.difficulty-container');
+                    const texts = currentScene.querySelectorAll('.final-text');
+                    const difficulties = currentScene.querySelectorAll('.difficulty-image');
+
+                    textContainer.style.display = 'block'; // 텍스트 컨테이너 다시 보이게
+                    texts.forEach(el => el.classList.add('is-visible'));
+                    setTimeout(() => { textContainer.style.display = 'none'; }, 4000);
+                    setTimeout(() => {
                         difficultyContainer.style.opacity = '1';
                         difficulties.forEach((el, index) => { setTimeout(() => el.classList.add('is-visible'), index * 400); });
-                    } else {
-                        // 휠 스크롤 시: 기존 텍스트 애니메이션 실행
-                        texts.forEach(el => el.classList.add('is-visible'));
-                        setTimeout(() => { texts.forEach(el => el.classList.remove('is-visible')); }, 4000);
-                        setTimeout(() => {
-                            difficultyContainer.style.opacity = '1';
-                            difficulties.forEach((el, index) => { setTimeout(() => el.classList.add('is-visible'), index * 400); });
-                        }, 5500);
-                    }
-                } else {
-                    // 다른 장면들은 기존 방식대로 모든 요소를 한 번에 보여줌
-                    scenes[currentSceneIndex].querySelectorAll('.reveal-on-scroll').forEach(el => el.classList.add('is-visible'));
+                    }, 4500);
                 }
 
                 // 애니메이션 시간 후 플래그 해제
